@@ -140,9 +140,37 @@ SLICKDEALS_RSS_URLS=https://example.com/slickdeals-feed.xml,https://example.com/
 
 ### Slickdeals RSS adapter
 
-`SlickdealsRssSource`는 사용자가 명시한 공개 RSS URL을 순회하고 각 RSS item의 `title`, `summary`, `link`, `published` 값을 기존 `Deal` 모델로 정규화합니다. `title` 또는 `link`가 없는 항목은 건너뜁니다. RSS 항목 텍스트에서 `Amazon`, `price mistake`, `glitch`, `coupon stack`, `promo code` 같은 signal과 `monitor`, `SSD`, `RAM`, `keyboard`, `mouse`, `headset` 등 관심 키워드를 추출해 사람이 검토할 후보로 만듭니다.
+`SlickdealsRssSource`는 사용자가 명시한 공개 RSS URL을 순회하고 각 RSS item의 `title`, `summary`, `link`, `published` 값을 기존 `Deal` 모델로 정규화합니다. `title` 또는 `link`가 없는 항목은 건너뜁니다. RSS 항목 텍스트에서 `Amazon`, `price mistake`, `pricing error`, `glitch`, `coupon glitch`, `coupon stack`, `promo code`, `buy 2`, `subscribe` 같은 signal과 `monitor`, `gaming monitor`, `OLED monitor`, `SSD`, `NVMe`, `RAM`, `keyboard`, `mouse`, `headset`, `docking station`, `USB hub` 등 관심 키워드를 추출해 사람이 검토할 후보로 만듭니다.
 
 RSS만으로는 90일 평균가나 최저가 같은 가격 이력을 신뢰성 있게 알 수 없습니다. 따라서 Slickdeals RSS 후보는 가격 급락 점수를 과도하게 받지 않도록 historical price를 unavailable로 처리하고, 가격이 title/summary에서 보이면 `current_price` 참고값만 채웁니다. 이 source는 가격 급락 확정 판단보다 키워드/signal 기반 후보 탐지용입니다.
+
+### Slickdeals RSS scoring calibration
+
+가격 이력이 확실한 source는 기존처럼 평균가 대비 할인율과 90일 최저가 돌파 여부로 가격 기반 점수를 받습니다. 반면 Slickdeals RSS처럼 가격 이력이 제한적인 source는 price history를 unavailable로 두고, RSS item의 title/summary에서 추출한 키워드와 signal에 더 큰 가중치를 줍니다. 동일 signal 또는 keyword가 title과 summary 양쪽에 반복되어도 대소문자 구분 없이 한 번만 점수에 반영합니다.
+
+현재 Slickdeals 보정 점수는 다음 기준을 사용합니다.
+
+- `slickdeals` source 기본 점수: +5
+- `price mistake`: +50
+- `pricing error`: +50
+- `glitch`: +40
+- `coupon glitch`: +40
+- `coupon stack`: +35
+- `promo code`: +20
+- `buy 2`: +15
+- `subscribe`: +10
+- `amazon`: +10
+- `monitor`, `gaming monitor`, `OLED monitor`: +15
+- `SSD`, `NVMe`, `RAM`, `DDR4`, `DDR5`: +15
+- `keyboard`, `mechanical keyboard`, `mouse`, `wireless mouse`, `headset`, `docking station`, `USB hub`: +10
+
+추천 `ALERT_SCORE_THRESHOLD` 예시는 다음과 같습니다.
+
+- `1~10`: smoke test 또는 Telegram 수신 테스트용입니다. 알림이 매우 많을 수 있습니다.
+- `15~25`: 관심 키워드가 포함된 일반 deal 후보를 확인하고 싶을 때 사용합니다.
+- `30~50`: `price mistake`, `pricing error`, `glitch`, `coupon stack` 같은 오류딜/글리치 의심 signal 위주로 필터링하고 싶을 때 권장합니다.
+
+실제 운영 전에는 threshold를 낮게 두고 Telegram 수신과 RSS 정규화가 정상인지 먼저 테스트한 뒤, 알림 양과 품질을 보면서 `30~50` 범위 또는 더 높은 값으로 조정하는 것을 권장합니다. threshold를 낮게 설정하면 일반 Slickdeals 항목도 많이 알림으로 올 수 있습니다.
 
 ## 환경변수 계획
 
