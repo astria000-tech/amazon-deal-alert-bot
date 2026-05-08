@@ -132,6 +132,30 @@ python main.py  # 두 번째 실행에서는 동일 deal_id 중복 알림이 차
 
 Telegram 환경변수가 비어 있으면 실제 Telegram 전송을 시도하지 않고 콘솔 알림으로 fallback합니다. SQLite 알림 이력은 기본적으로 `./data/alerts.sqlite3`에 저장됩니다.
 
+## 테스트 및 CI
+
+이 프로젝트의 테스트는 현재 MVP 안전 범위에 맞춰 **mock 데이터만** 사용합니다. 실제 Amazon, Keepa, Slickdeals, Reddit 연동이나 자동구매/로그인/장바구니/쿠폰/CAPTCHA 우회 동작은 테스트에도 포함하지 않습니다.
+
+### 로컬 테스트 실행
+
+```bash
+python -m py_compile main.py src/deal_alert_bot/*.py src/deal_alert_bot/sources/*.py
+pytest
+python main.py
+```
+
+- `tests/test_scoring.py`: 평균가 대비 할인율, 관심 키워드, 오류딜 의심 signal, `ScoreResult` 내용을 검증합니다.
+- `tests/test_storage.py`: 임시 디렉터리의 SQLite 파일로 최초 알림 가능 여부와 중복 알림 차단을 검증하며, 실제 `data/alerts.sqlite3`는 사용하지 않습니다.
+- `tests/test_config.py`: 환경변수 기본값, `ALERT_SCORE_THRESHOLD` 정수 파싱, `SQLITE_DB_PATH` override, `python-dotenv` 미설치 fallback을 검증합니다.
+
+### GitHub Actions
+
+`.github/workflows/test.yml` 워크플로는 `push`와 `pull_request`에서 실행되며 Python 3.11 및 3.12 조합으로 다음을 수행합니다.
+
+1. `pip install -r requirements.txt`
+2. `pytest`
+3. Telegram 토큰 없이 콘솔 fallback으로 `python main.py` mock-only smoke test
+
 ## 로컬 개발 메모
 
 애플리케이션 MVP 코드가 추가되었습니다. 로컬 실행 시 다음 원칙을 따릅니다.
