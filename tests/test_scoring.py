@@ -104,3 +104,23 @@ def test_score_result_contains_score_and_reasons() -> None:
     assert isinstance(result.reasons, list)
     assert result.reasons
     assert all(isinstance(reason, str) for reason in result.reasons)
+
+
+def test_unavailable_price_history_does_not_award_price_drop_points() -> None:
+    deal = make_deal(
+        source="slickdeals",
+        current_price=49.99,
+        average_price_90d=-1.0,
+        lowest_price_90d=-1.0,
+        title="Monitor price mistake glitch coupon stack promo code",
+        keywords=["monitor"],
+        signals=["price mistake", "glitch", "coupon stack", "promo code"],
+    )
+
+    result = calculate_score(deal)
+
+    assert result.discount_percent_vs_average == 0.0
+    assert result.score == 30
+    assert any("average price is unavailable" in reason for reason in result.reasons)
+    assert not any("below the 90-day average" in reason for reason in result.reasons)
+    assert not any("below the 90-day lowest price" in reason for reason in result.reasons)

@@ -46,40 +46,46 @@ def calculate_score(deal: Deal) -> ScoreResult:
     score = 0
     reasons: list[str] = []
 
-    if deal.average_price_90d <= 0:
-        reasons.append("90-day average price is unavailable or invalid")
-        return ScoreResult(score=0, reasons=reasons, discount_percent_vs_average=0.0)
+    discount_percent = 0.0
+    has_current_price = deal.current_price > 0
+    has_average_price = deal.average_price_90d > 0
 
-    discount_percent = (
-        (deal.average_price_90d - deal.current_price) / deal.average_price_90d
-    ) * 100
+    if has_current_price and has_average_price:
+        discount_percent = (
+            (deal.average_price_90d - deal.current_price) / deal.average_price_90d
+        ) * 100
 
-    if discount_percent >= 80:
-        score += 60
-        reasons.append(
-            f"current price is {discount_percent:.1f}% below the 90-day average"
-        )
-    elif discount_percent >= 70:
-        score += 45
-        reasons.append(
-            f"current price is {discount_percent:.1f}% below the 90-day average"
-        )
-    elif discount_percent >= 50:
-        score += 25
-        reasons.append(
-            f"current price is {discount_percent:.1f}% below the 90-day average"
-        )
-    elif discount_percent > 0:
-        score += 10
-        reasons.append(
-            f"current price is {discount_percent:.1f}% below the 90-day average"
-        )
+        if discount_percent >= 80:
+            score += 60
+            reasons.append(
+                f"current price is {discount_percent:.1f}% below the 90-day average"
+            )
+        elif discount_percent >= 70:
+            score += 45
+            reasons.append(
+                f"current price is {discount_percent:.1f}% below the 90-day average"
+            )
+        elif discount_percent >= 50:
+            score += 25
+            reasons.append(
+                f"current price is {discount_percent:.1f}% below the 90-day average"
+            )
+        elif discount_percent > 0:
+            score += 10
+            reasons.append(
+                f"current price is {discount_percent:.1f}% below the 90-day average"
+            )
+        else:
+            reasons.append("current price is not below the 90-day average")
     else:
-        reasons.append("current price is not below the 90-day average")
+        reasons.append("current or 90-day average price is unavailable or invalid")
 
-    if deal.current_price < deal.lowest_price_90d:
-        score += 20
-        reasons.append("current price is below the 90-day lowest price")
+    if has_current_price and deal.lowest_price_90d > 0:
+        if deal.current_price < deal.lowest_price_90d:
+            score += 20
+            reasons.append("current price is below the 90-day lowest price")
+    else:
+        reasons.append("90-day lowest price is unavailable or invalid")
 
     searchable_text = " ".join(_normalized_terms(deal))
     matched_keywords = sorted(

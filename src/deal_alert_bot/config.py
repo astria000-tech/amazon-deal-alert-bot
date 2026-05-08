@@ -51,14 +51,18 @@ def _read_int_env(name: str, default: int) -> int:
         return default
 
 
-def _read_csv_env(name: str, default: list[str]) -> list[str]:
+def _read_csv_env(
+    name: str, default: list[str], *, lowercase: bool = True
+) -> list[str]:
     """Read a comma-separated environment variable as a cleaned string list."""
 
     raw_value = os.getenv(name)
     if raw_value is None or raw_value.strip() == "":
         return list(default)
 
-    values = [part.strip().lower() for part in raw_value.split(",")]
+    values = [part.strip() for part in raw_value.split(",")]
+    if lowercase:
+        values = [value.lower() for value in values]
     cleaned_values = [value for value in values if value]
     if not cleaned_values:
         return list(default)
@@ -76,6 +80,7 @@ class Settings:
     log_level: str
     enabled_sources: list[str]
     keepa_api_key: str | None
+    slickdeals_rss_urls: list[str]
 
 
 def load_settings() -> Settings:
@@ -92,6 +97,7 @@ def load_settings() -> Settings:
     log_level = os.getenv("LOG_LEVEL", DEFAULT_LOG_LEVEL).upper()
     enabled_sources = _read_csv_env("ENABLED_SOURCES", DEFAULT_ENABLED_SOURCES)
     keepa_api_key = os.getenv("KEEPA_API_KEY") or None
+    slickdeals_rss_urls = _read_csv_env("SLICKDEALS_RSS_URLS", [], lowercase=False)
 
     return Settings(
         telegram_bot_token=telegram_bot_token,
@@ -101,4 +107,5 @@ def load_settings() -> Settings:
         log_level=log_level,
         enabled_sources=enabled_sources,
         keepa_api_key=keepa_api_key,
+        slickdeals_rss_urls=slickdeals_rss_urls,
     )

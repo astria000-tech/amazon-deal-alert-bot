@@ -12,6 +12,7 @@ from deal_alert_bot.notifier import Notifier
 from deal_alert_bot.sources.base import DealSource
 from deal_alert_bot.sources.keepa import KeepaDealSource
 from deal_alert_bot.sources.mock import MockDealSource, fetch_mock_deals
+from deal_alert_bot.sources.slickdeals import SlickdealsRssSource
 from deal_alert_bot.sources.registry import (
     available_source_names,
     get_enabled_sources,
@@ -67,8 +68,8 @@ def test_registry_defaults_to_mock_source() -> None:
     assert sources[0].name == "mock"
 
 
-def test_available_source_names_includes_mock_and_keepa() -> None:
-    assert set(available_source_names()) >= {"mock", "keepa"}
+def test_available_source_names_includes_mock_keepa_and_slickdeals() -> None:
+    assert set(available_source_names()) >= {"mock", "keepa", "slickdeals"}
 
 
 def test_registry_returns_mock_source_by_name() -> None:
@@ -86,16 +87,26 @@ def test_registry_returns_keepa_source_by_name(monkeypatch: pytest.MonkeyPatch) 
     assert source.name == "keepa"
 
 
+def test_registry_returns_slickdeals_source_by_name(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SLICKDEALS_RSS_URLS", "https://example.com/rss")
+
+    source = get_source(" slickdeals ")
+
+    assert isinstance(source, SlickdealsRssSource)
+    assert source.name == "slickdeals"
+
+
 def test_registry_returns_enabled_mock_and_keepa_sources(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.delenv("KEEPA_API_KEY", raising=False)
 
-    sources = get_enabled_sources(["mock", "keepa"])
+    sources = get_enabled_sources(["mock", "keepa", "slickdeals"])
 
-    assert len(sources) == 2
+    assert len(sources) == 3
     assert isinstance(sources[0], MockDealSource)
     assert isinstance(sources[1], KeepaDealSource)
+    assert isinstance(sources[2], SlickdealsRssSource)
 
 
 def test_registry_unknown_source_fails_closed() -> None:
