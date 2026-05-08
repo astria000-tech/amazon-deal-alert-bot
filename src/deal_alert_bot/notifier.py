@@ -6,6 +6,46 @@ import importlib
 
 from .models import Deal, ScoreResult
 
+HUMAN_REVIEW_CHECKLIST = [
+    "Verify the final price directly on the Amazon page",
+    "Verify option- and quantity-specific pricing directly",
+    "Verify whether coupons or promotions are applied",
+    "Confirm the seller and fulfillment/shipping party",
+    "Account for the possibility that an order may be canceled after placement",
+]
+
+
+def build_alert_message(deal: Deal, score_result: ScoreResult) -> str:
+    """Build a human-review alert message without performing delivery side effects."""
+
+    reasons = score_result.reasons or ["No scoring reasons were provided"]
+    reason_lines = "\n".join(f"- {reason}" for reason in reasons)
+    review_lines = "\n".join(f"- {item}" for item in HUMAN_REVIEW_CHECKLIST)
+
+    return "\n".join(
+        [
+            "🚨 Suspicious Amazon Deal Candidate (Human Review Required)",
+            "",
+            f"Suspicion score: {score_result.score}/100",
+            f"Product: {deal.title}",
+            f"Category: {deal.category}",
+            f"Current price: ${deal.current_price:,.2f}",
+            f"90-day average price: ${deal.average_price_90d:,.2f}",
+            f"90-day lowest price: ${deal.lowest_price_90d:,.2f}",
+            f"Discount vs 90-day average: {score_result.discount_percent_vs_average:.1f}%",
+            "",
+            "Reasons:",
+            reason_lines,
+            "",
+            f"Product URL: {deal.url}",
+            "",
+            "Human verification checklist:",
+            review_lines,
+            "",
+            "Safety note: This bot only sends alerts. It does not buy, log in, test carts, click coupons, bypass CAPTCHA, or crawl Amazon.",
+        ]
+    )
+
 
 class Notifier:
     """Send alerts to Telegram when configured, otherwise print to console."""
@@ -15,23 +55,9 @@ class Notifier:
         self.telegram_chat_id = telegram_chat_id
 
     def build_message(self, deal: Deal, score_result: ScoreResult) -> str:
-        reasons = "\n".join(f"- {reason}" for reason in score_result.reasons)
-        return "\n".join(
-            [
-                "🚨 Suspicious Amazon Deal Candidate",
-                "",
-                f"Title: {deal.title}",
-                f"Category: {deal.category}",
-                f"Source: {deal.source}",
-                f"Current price: ${deal.current_price:,.2f}",
-                f"90-day average: ${deal.average_price_90d:,.2f}",
-                f"90-day lowest: ${deal.lowest_price_90d:,.2f}",
-                f"Score: {score_result.score}/100",
-                "Reasons:",
-                reasons,
-                f"URL: {deal.url}",
-            ]
-        )
+        """Build the notification text for this deal."""
+
+        return build_alert_message(deal, score_result)
 
     def send(self, deal: Deal, score_result: ScoreResult) -> bool:
         """Send a notification.
@@ -41,7 +67,7 @@ class Notifier:
         the MVP continues to run safely.
         """
 
-        message = self.build_message(deal, score_result)
+        message = build_alert_message(deal, score_result)
 
         if not self.telegram_bot_token or not self.telegram_chat_id:
             self._print_console_fallback(message, "Telegram is not configured")

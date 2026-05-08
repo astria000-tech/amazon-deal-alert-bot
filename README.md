@@ -132,6 +132,27 @@ python main.py  # 두 번째 실행에서는 동일 deal_id 중복 알림이 차
 
 Telegram 환경변수가 비어 있으면 실제 Telegram 전송을 시도하지 않고 콘솔 알림으로 fallback합니다. SQLite 알림 이력은 기본적으로 `./data/alerts.sqlite3`에 저장됩니다.
 
+## Telegram Bot 설정
+
+Telegram 알림은 선택 사항입니다. 토큰이나 chat_id가 없으면 MVP는 실제 Telegram API 호출을 하지 않고 콘솔 fallback으로 알림 메시지를 출력합니다.
+
+1. Telegram에서 `@BotFather`를 열고 `/newbot` 명령으로 새 bot을 만듭니다.
+2. BotFather가 발급한 bot token을 복사합니다. 이 값은 비밀 정보이므로 코드, README, 이슈, PR, GitHub Actions 로그에 노출하지 않습니다.
+3. 생성한 bot에게 Telegram 앱에서 직접 메시지를 1회 보냅니다.
+4. `https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates`를 브라우저나 안전한 로컬 터미널에서 호출해 `chat.id` 값을 확인합니다. 운영 토큰은 공유하지 말고, 확인 후 터미널 기록 관리에도 주의합니다.
+5. 로컬 `.env` 파일에 아래처럼 placeholder가 아닌 실제 값을 설정합니다. `.env`는 절대 GitHub에 커밋하지 않습니다.
+
+```env
+TELEGRAM_BOT_TOKEN=replace-with-your-real-bot-token
+TELEGRAM_CHAT_ID=replace-with-your-real-chat-id
+```
+
+토큰 없이 실행하거나 `TELEGRAM_BOT_TOKEN` 또는 `TELEGRAM_CHAT_ID` 중 하나라도 비어 있으면 다음과 같이 콘솔 fallback으로 동작합니다.
+
+```text
+CONSOLE ALERT FALLBACK (Telegram is not configured)
+```
+
 ## 테스트 및 CI
 
 이 프로젝트의 테스트는 현재 MVP 안전 범위에 맞춰 **mock 데이터만** 사용합니다. 실제 Amazon, Keepa, Slickdeals, Reddit 연동이나 자동구매/로그인/장바구니/쿠폰/CAPTCHA 우회 동작은 테스트에도 포함하지 않습니다.
@@ -147,6 +168,7 @@ python main.py
 - `tests/test_scoring.py`: 평균가 대비 할인율, 관심 키워드, 오류딜 의심 signal, `ScoreResult` 내용을 검증합니다.
 - `tests/test_storage.py`: 임시 디렉터리의 SQLite 파일로 최초 알림 가능 여부와 중복 알림 차단을 검증하며, 실제 `data/alerts.sqlite3`는 사용하지 않습니다.
 - `tests/test_config.py`: 환경변수 기본값, `ALERT_SCORE_THRESHOLD` 정수 파싱, `SQLITE_DB_PATH` override, `python-dotenv` 미설치 fallback을 검증합니다.
+- `tests/test_notifier.py`: 알림 메시지 포맷, 사람이 직접 확인해야 할 항목, Telegram 미설정 콘솔 fallback, Telegram 전송 실패 fallback을 mock `requests.post`로 검증합니다.
 
 ### GitHub Actions
 
