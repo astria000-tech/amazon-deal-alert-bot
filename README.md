@@ -178,6 +178,24 @@ python main.py
 2. `pytest`
 3. Telegram 토큰 없이 콘솔 fallback으로 `python main.py` mock-only smoke test
 
+### GitHub Actions에서 Telegram 수동 테스트
+
+`.github/workflows/telegram-smoke-test.yml` 워크플로는 `workflow_dispatch`로만 실행되는 수동 smoke test입니다. `push` 또는 `pull_request`에서는 자동 실행되지 않습니다. 이 workflow는 기존 MVP와 동일하게 **mock 데이터만 사용**하며, 자동구매, Amazon 접근, 로그인 자동화, 장바구니 테스트, 쿠폰 클릭, CAPTCHA 우회, 크롤링을 수행하지 않습니다.
+
+실제 Telegram 발송을 테스트하려면 GitHub 저장소의 `Settings → Secrets and variables → Actions`에서 아래 GitHub Secrets를 등록합니다.
+
+- `TELEGRAM_BOT_TOKEN`: Telegram BotFather에서 발급받은 bot token
+- `TELEGRAM_CHAT_ID`: 알림을 받을 Telegram chat ID
+
+수동 실행 방법은 다음과 같습니다.
+
+1. GitHub 저장소의 `Actions` 탭을 엽니다.
+2. `Telegram Smoke Test` workflow를 선택합니다.
+3. `Run workflow` 버튼을 클릭합니다.
+4. 실행 로그에서 mock-only 알림 처리 결과를 확인합니다.
+
+토큰과 chat ID는 비밀 정보이므로 코드, README, 이슈, PR, GitHub Actions 로그에 출력하지 마세요. workflow는 `TELEGRAM_BOT_TOKEN`과 `TELEGRAM_CHAT_ID`를 GitHub Secrets에서만 읽습니다. 두 secret 중 하나라도 비어 있으면 실제 Telegram API 호출을 하지 않고 콘솔 fallback으로 동작할 수 있습니다.
+
 ## 로컬 개발 메모
 
 애플리케이션 MVP 코드가 추가되었습니다. 로컬 실행 시 다음 원칙을 따릅니다.

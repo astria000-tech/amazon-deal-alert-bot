@@ -85,8 +85,21 @@ class Notifier:
             print(f"Telegram alert sent for deal_id={deal.deal_id}")
             return True
         except Exception as error:
-            self._print_console_fallback(message, f"Telegram send failed: {error}")
+            safe_error = self._sanitize_error_for_log(error)
+            self._print_console_fallback(message, f"Telegram send failed: {safe_error}")
             return True
+
+    def _sanitize_error_for_log(self, error: Exception) -> str:
+        """Return an error string with Telegram credentials redacted."""
+
+        safe_error = str(error)
+        for secret_value in (self.telegram_bot_token, self.telegram_chat_id):
+            if secret_value:
+                safe_error = safe_error.replace(secret_value, "[redacted]")
+
+        if safe_error:
+            return safe_error
+        return type(error).__name__
 
     @staticmethod
     def _print_console_fallback(message: str, reason: str) -> None:
