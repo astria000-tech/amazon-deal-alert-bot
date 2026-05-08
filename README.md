@@ -242,6 +242,35 @@ python main.py
 
 토큰과 chat ID는 비밀 정보이므로 코드, README, 이슈, PR, GitHub Actions 로그에 출력하지 마세요. workflow는 `TELEGRAM_BOT_TOKEN`과 `TELEGRAM_CHAT_ID`를 GitHub Secrets에서만 읽습니다. 두 secret 중 하나라도 비어 있으면 실제 Telegram API 호출을 하지 않고 콘솔 fallback으로 동작할 수 있습니다.
 
+
+### GitHub Actions에서 Slickdeals RSS 수동 테스트
+
+`.github/workflows/slickdeals-rss-smoke-test.yml` 워크플로는 `workflow_dispatch`로만 실행되는 수동 Slickdeals RSS smoke test입니다. `push` 또는 `pull_request`에서는 자동 실행되지 않으며, 기본 테스트/CI workflow인 `.github/workflows/test.yml`은 계속 실제 네트워크 호출 없이 mock source와 fake test data만 사용합니다.
+
+실제 Telegram 알림을 받으려면 GitHub 저장소의 `Settings → Secrets and variables → Actions`에서 아래 GitHub Secrets를 등록합니다.
+
+- `TELEGRAM_BOT_TOKEN`: Telegram BotFather에서 발급받은 bot token
+- `TELEGRAM_CHAT_ID`: 알림을 받을 Telegram chat ID
+
+수동 실행 방법은 다음과 같습니다.
+
+1. GitHub 저장소의 `Actions` 탭을 엽니다.
+2. `Slickdeals RSS Smoke Test` workflow를 선택합니다.
+3. `Run workflow` 버튼을 클릭합니다.
+4. `rss_urls`에 사용자가 직접 확인하고 싶은 Slickdeals 공개 RSS URL을 쉼표로 구분해 입력합니다.
+5. 필요한 경우 `enabled_sources`는 기본값 `slickdeals`를 유지하고, `alert_score_threshold`는 기본값 `30`에서 조정합니다.
+6. 실행 후 Telegram 알림 또는 GitHub Actions 로그의 안전한 처리 결과를 확인합니다.
+
+`rss_urls` 입력 예시는 다음과 같습니다. 실제 실행 시에는 사용자가 선택한 Slickdeals RSS URL로 바꿔 입력합니다.
+
+```text
+https://slickdeals.net/newsearch.php?mode=frontpage&searcharea=deals&searchin=first&rss=1,https://slickdeals.net/newsearch.php?searcharea=deals&searchin=first&q=monitor&rss=1
+```
+
+이 workflow는 사용자가 입력한 RSS URL만 호출합니다. Amazon 사이트 직접 크롤링, Amazon 로그인, 장바구니 테스트, 쿠폰 클릭, 자동구매, CAPTCHA 우회, 프록시/봇 탐지 우회, 대량 크롤링을 하지 않습니다. Telegram Bot Token과 Chat ID는 GitHub Secrets에서만 읽고 코드나 README에 실제 값을 적지 않으며 로그에도 출력하지 않습니다.
+
+`alert_score_threshold`를 낮게 설정하면 오류딜 의심도가 낮은 일반 딜도 많이 Telegram으로 올 수 있습니다. 처음에는 기본값 `30` 또는 더 높은 값으로 시작한 뒤, 알림 양을 보면서 조정하는 것을 권장합니다.
+
 ## 로컬 개발 메모
 
 애플리케이션 MVP 코드가 추가되었습니다. 로컬 실행 시 다음 원칙을 따릅니다.
