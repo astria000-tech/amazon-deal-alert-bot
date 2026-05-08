@@ -216,3 +216,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Amazon deal alert bot local runtime files
+*.pyc
+.venv/
+data/
+*.sqlite3
