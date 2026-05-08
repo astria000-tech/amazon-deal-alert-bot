@@ -81,7 +81,7 @@ MVP뿐 아니라 장기적으로도 다음 기능은 이 프로젝트 범위에�
 
 ## 현재 MVP 구조
 
-현재 구현된 파일 구조는 다음과 같습니다. 실제 데이터 소스 adapter는 아직 추가하지 않았고, mock 데이터 소스만 사용합니다.
+현재 구현된 파일 구조는 다음과 같습니다. 실제 데이터 소스 adapter 구현은 아직 추가하지 않았고, source adapter interface와 registry 위에 mock 데이터 소스만 기본 활성화합니다.
 
 ```text
 amazon-deal-alert-bot/
@@ -100,8 +100,32 @@ amazon-deal-alert-bot/
         ├── notifier.py        # Telegram 알림 또는 콘솔 fallback
         └── sources/
             ├── __init__.py
-            └── mock.py        # MVP용 mock 데이터 소스
+            ├── base.py        # DealSource 공통 adapter interface
+            ├── mock.py        # MVP용 MockDealSource
+            └── registry.py    # ENABLED_SOURCES 기반 source 활성화
 ```
+
+## Source adapter 구조
+
+`main.py`는 특정 source 구현을 직접 호출하지 않고, `sources.registry`에서 활성화된 adapter 목록을 받아 각 adapter의 `fetch_deals()`를 실행합니다. 모든 source adapter는 `DealSource` interface를 따르며, 최소한 안정적인 `name` 속성과 `fetch_deals() -> list[Deal]` 메서드를 제공합니다. 따라서 향후 Keepa API, Slickdeals RSS, Reddit API adapter를 추가해도 scoring, SQLite 중복 방지, notifier 흐름은 동일한 `Deal` 모델만 처리하면 됩니다.
+
+현재 등록된 source는 `mock`뿐입니다. Keepa/Slickdeals/Reddit 이름을 `ENABLED_SOURCES`에 넣어도 이번 단계에서는 실제 네트워크 호출을 하지 않으며, 등록되지 않은 source로 안전하게 실패합니다. future adapter를 추가할 때도 자동구매, Amazon 로그인 자동화, 장바구니 테스트, 쿠폰 클릭, CAPTCHA 우회, 대량 크롤링 기능은 포함하지 않습니다.
+
+### ENABLED_SOURCES 설정
+
+기본값은 `mock`입니다. 환경변수를 설정하지 않거나 빈 값이면 mock source가 실행됩니다.
+
+```env
+ENABLED_SOURCES=mock
+```
+
+여러 source는 쉼표로 구분하도록 설계되어 있으며 공백은 제거됩니다.
+
+```env
+ENABLED_SOURCES=mock, keepa
+```
+
+단, 현재 지원 source는 `mock`뿐이므로 `keepa`, `slickdeals`, `reddit`은 향후 adapter가 안전하게 구현되고 registry에 등록된 뒤에만 사용할 수 있습니다.
 
 ## 환경변수 계획
 
@@ -113,6 +137,7 @@ TELEGRAM_CHAT_ID=replace-with-your-chat-id
 SQLITE_DB_PATH=./data/alerts.sqlite3
 ALERT_SCORE_THRESHOLD=70
 LOG_LEVEL=INFO
+ENABLED_SOURCES=mock
 
 # Future integrations
 KEEPA_API_KEY=replace-later
@@ -130,7 +155,7 @@ python main.py
 python main.py  # 두 번째 실행에서는 동일 deal_id 중복 알림이 차단됩니다
 ```
 
-Telegram 환경변수가 비어 있으면 실제 Telegram 전송을 시도하지 않고 콘솔 알림으로 fallback합니다. SQLite 알림 이력은 기본적으로 `./data/alerts.sqlite3`에 저장됩니다.
+Telegram 환경변수가 비어 있으면 실제 Telegram 전송을 시도하지 않고 콘솔 알림으로 fallback합니다. SQLite 알림 이력은 기본적으로 `./data/alerts.sqlite3`에 저장됩니다. `ENABLED_SOURCES`를 설정하지 않아도 기본값 `mock`이 사용됩니다.
 
 ## Telegram Bot 설정
 
@@ -167,8 +192,9 @@ python main.py
 
 - `tests/test_scoring.py`: 평균가 대비 할인율, 관심 키워드, 오류딜 의심 signal, `ScoreResult` 내용을 검증합니다.
 - `tests/test_storage.py`: 임시 디렉터리의 SQLite 파일로 최초 알림 가능 여부와 중복 알림 차단을 검증하며, 실제 `data/alerts.sqlite3`는 사용하지 않습니다.
-- `tests/test_config.py`: 환경변수 기본값, `ALERT_SCORE_THRESHOLD` 정수 파싱, `SQLITE_DB_PATH` override, `python-dotenv` 미설치 fallback을 검증합니다.
+- `tests/test_config.py`: 환경변수 기본값, `ALERT_SCORE_THRESHOLD` 정수 파싱, `SQLITE_DB_PATH` override, `ENABLED_SOURCES` 목록 파싱, `python-dotenv` 미설치 fallback을 검증합니다.
 - `tests/test_notifier.py`: 알림 메시지 포맷, 사람이 직접 확인해야 할 항목, Telegram 미설정 콘솔 fallback, Telegram 전송 실패 fallback을 mock `requests.post`로 검증합니다.
+- `tests/test_sources.py`: `MockDealSource`, source registry 기본값/알 수 없는 source 실패, source fetch 실패 복구, source deal이 scoring/storage/notifier 흐름으로 이어지는지 검증합니다.
 
 ### GitHub Actions
 

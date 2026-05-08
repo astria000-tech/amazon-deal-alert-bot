@@ -12,6 +12,7 @@ from pathlib import Path
 DEFAULT_SQLITE_DB_PATH = "./data/alerts.sqlite3"
 DEFAULT_ALERT_SCORE_THRESHOLD = 70
 DEFAULT_LOG_LEVEL = "INFO"
+DEFAULT_ENABLED_SOURCES = ["mock"]
 
 
 def _load_dotenv() -> None:
@@ -50,6 +51,20 @@ def _read_int_env(name: str, default: int) -> int:
         return default
 
 
+def _read_csv_env(name: str, default: list[str]) -> list[str]:
+    """Read a comma-separated environment variable as a cleaned string list."""
+
+    raw_value = os.getenv(name)
+    if raw_value is None or raw_value.strip() == "":
+        return list(default)
+
+    values = [part.strip().lower() for part in raw_value.split(",")]
+    cleaned_values = [value for value in values if value]
+    if not cleaned_values:
+        return list(default)
+    return cleaned_values
+
+
 @dataclass(frozen=True)
 class Settings:
     """Application settings."""
@@ -59,6 +74,7 @@ class Settings:
     sqlite_db_path: Path
     alert_score_threshold: int
     log_level: str
+    enabled_sources: list[str]
 
 
 def load_settings() -> Settings:
@@ -73,6 +89,7 @@ def load_settings() -> Settings:
         "ALERT_SCORE_THRESHOLD", DEFAULT_ALERT_SCORE_THRESHOLD
     )
     log_level = os.getenv("LOG_LEVEL", DEFAULT_LOG_LEVEL).upper()
+    enabled_sources = _read_csv_env("ENABLED_SOURCES", DEFAULT_ENABLED_SOURCES)
 
     return Settings(
         telegram_bot_token=telegram_bot_token,
@@ -80,4 +97,5 @@ def load_settings() -> Settings:
         sqlite_db_path=sqlite_db_path,
         alert_score_threshold=alert_score_threshold,
         log_level=log_level,
+        enabled_sources=enabled_sources,
     )

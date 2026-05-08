@@ -3,11 +3,35 @@
 from __future__ import annotations
 
 from ..models import Deal
+from .base import DealSource
+
+
+class MockDealSource(DealSource):
+    """Deterministic mock source used by the MVP and tests."""
+
+    @property
+    def name(self) -> str:
+        """Return the source registry name."""
+
+        return "mock"
+
+    def fetch_deals(self) -> list[Deal]:
+        """Return deterministic mock deals for local MVP runs."""
+
+        return _build_mock_deals()
 
 
 def fetch_mock_deals() -> list[Deal]:
-    """Return deterministic mock deals for local MVP runs."""
+    """Return deterministic mock deals for local MVP runs.
 
+    This compatibility wrapper keeps existing callers working while the
+    application migrates to source adapter instances.
+    """
+
+    return MockDealSource().fetch_deals()
+
+
+def _build_mock_deals() -> list[Deal]:
     return [
         Deal(
             deal_id="mock-oled-monitor-001",
