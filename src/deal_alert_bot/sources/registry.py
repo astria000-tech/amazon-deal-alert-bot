@@ -8,6 +8,7 @@ from collections.abc import Callable, Iterable
 from .base import DealSource
 from .keepa import KeepaDealSource
 from .mock import MockDealSource
+from .slickdeals import SlickdealsRssSource
 
 SourceFactory = Callable[[], DealSource]
 
@@ -18,9 +19,22 @@ def _build_keepa_source() -> KeepaDealSource:
     return KeepaDealSource(api_key=os.getenv("KEEPA_API_KEY") or None)
 
 
+def _build_slickdeals_source() -> SlickdealsRssSource:
+    rss_urls = _read_csv_env("SLICKDEALS_RSS_URLS")
+    return SlickdealsRssSource(rss_urls=rss_urls)
+
+
+def _read_csv_env(name: str) -> list[str]:
+    raw_value = os.getenv(name)
+    if raw_value is None or raw_value.strip() == "":
+        return []
+    return [part.strip() for part in raw_value.split(",") if part.strip()]
+
+
 _SOURCE_FACTORIES: dict[str, SourceFactory] = {
     "keepa": _build_keepa_source,
     "mock": MockDealSource,
+    "slickdeals": _build_slickdeals_source,
 }
 
 

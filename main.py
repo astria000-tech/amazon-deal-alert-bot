@@ -1,4 +1,4 @@
-"""Run the mock-only Amazon suspicious error-deal alert bot MVP."""
+"""Run the human-review suspicious error-deal alert bot."""
 
 from __future__ import annotations
 
@@ -95,7 +95,7 @@ def main() -> int:
     notifier = Notifier(settings.telegram_bot_token, settings.telegram_chat_id)
 
     print("Amazon suspicious error-deal alert bot MVP")
-    print("Mode: mock data only; no Amazon login, cart automation, or purchasing")
+    print("Mode: human-review alerts only; no Amazon login, cart automation, or purchasing")
     print(f"SQLite DB: {settings.sqlite_db_path}")
     print(f"Alert score threshold: {settings.alert_score_threshold}")
     print(f"Enabled sources: {', '.join(settings.enabled_sources)}")
