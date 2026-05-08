@@ -81,7 +81,7 @@ MVP뿐 아니라 장기적으로도 다음 기능은 이 프로젝트 범위에�
 
 ## 현재 MVP 구조
 
-현재 구현된 파일 구조는 다음과 같습니다. 실제 데이터 소스 adapter 구현은 아직 추가하지 않았고, source adapter interface와 registry 위에 mock 데이터 소스만 기본 활성화합니다.
+현재 구현된 파일 구조는 다음과 같습니다. source adapter interface와 registry 위에 mock 데이터 소스를 기본 활성화하며, Keepa는 실제 API 호출 없는 skeleton/fake-client 테스트 단계로만 등록되어 있습니다.
 
 ```text
 amazon-deal-alert-bot/
@@ -101,6 +101,7 @@ amazon-deal-alert-bot/
         └── sources/
             ├── __init__.py
             ├── base.py        # DealSource 공통 adapter interface
+            ├── keepa.py       # Keepa skeleton 및 fake-client normalization
             ├── mock.py        # MVP용 MockDealSource
             └── registry.py    # ENABLED_SOURCES 기반 source 활성화
 ```
@@ -109,7 +110,7 @@ amazon-deal-alert-bot/
 
 `main.py`는 특정 source 구현을 직접 호출하지 않고, `sources.registry`에서 활성화된 adapter 목록을 받아 각 adapter의 `fetch_deals()`를 실행합니다. 모든 source adapter는 `DealSource` interface를 따르며, 최소한 안정적인 `name` 속성과 `fetch_deals() -> list[Deal]` 메서드를 제공합니다. 따라서 향후 Keepa API, Slickdeals RSS, Reddit API adapter를 추가해도 scoring, SQLite 중복 방지, notifier 흐름은 동일한 `Deal` 모델만 처리하면 됩니다.
 
-현재 등록된 source는 `mock`뿐입니다. Keepa/Slickdeals/Reddit 이름을 `ENABLED_SOURCES`에 넣어도 이번 단계에서는 실제 네트워크 호출을 하지 않으며, 등록되지 않은 source로 안전하게 실패합니다. future adapter를 추가할 때도 자동구매, Amazon 로그인 자동화, 장바구니 테스트, 쿠폰 클릭, CAPTCHA 우회, 대량 크롤링 기능은 포함하지 않습니다.
+현재 등록된 source는 `mock`과 `keepa`입니다. 기본 실행은 계속 `mock`만 사용합니다. `keepa`는 skeleton/fake-client 테스트 단계이며 실제 Keepa API 호출, Amazon 호출, 크롤링, 구매/로그인/장바구니/쿠폰/CAPTCHA 자동화를 수행하지 않습니다. `slickdeals`, `reddit` 등 등록되지 않은 source는 안전하게 실패합니다. future adapter를 추가할 때도 자동구매, Amazon 로그인 자동화, 장바구니 테스트, 쿠폰 클릭, CAPTCHA 우회, 대량 크롤링 기능은 포함하지 않습니다.
 
 ### ENABLED_SOURCES 설정
 
@@ -125,7 +126,7 @@ ENABLED_SOURCES=mock
 ENABLED_SOURCES=mock, keepa
 ```
 
-단, 현재 지원 source는 `mock`뿐이므로 `keepa`, `slickdeals`, `reddit`은 향후 adapter가 안전하게 구현되고 registry에 등록된 뒤에만 사용할 수 있습니다.
+현재 `keepa`는 registry에 등록되어 있지만 실제 네트워크 client가 없습니다. `ENABLED_SOURCES=keepa` 또는 `ENABLED_SOURCES=mock,keepa`로 활성화하면 향후 실제 client 연결 시 `KEEPA_API_KEY`가 필요합니다. 지금은 API 키가 없으면 명확한 설정 오류로 source fetch가 실패하며, `mock,keepa`처럼 함께 실행할 경우 source별 실패 격리 로직 덕분에 mock source 처리는 계속 진행됩니다.
 
 ## 환경변수 계획
 
@@ -140,7 +141,7 @@ LOG_LEVEL=INFO
 ENABLED_SOURCES=mock
 
 # Future integrations
-KEEPA_API_KEY=replace-later
+KEEPA_API_KEY=
 REDDIT_CLIENT_ID=replace-later
 REDDIT_CLIENT_SECRET=replace-later
 REDDIT_USER_AGENT=amazon-deal-alert-bot/0.1
@@ -155,7 +156,7 @@ python main.py
 python main.py  # 두 번째 실행에서는 동일 deal_id 중복 알림이 차단됩니다
 ```
 
-Telegram 환경변수가 비어 있으면 실제 Telegram 전송을 시도하지 않고 콘솔 알림으로 fallback합니다. SQLite 알림 이력은 기본적으로 `./data/alerts.sqlite3`에 저장됩니다. `ENABLED_SOURCES`를 설정하지 않아도 기본값 `mock`이 사용됩니다.
+Telegram 환경변수가 비어 있으면 실제 Telegram 전송을 시도하지 않고 콘솔 알림으로 fallback합니다. SQLite 알림 이력은 기본적으로 `./data/alerts.sqlite3`에 저장됩니다. `ENABLED_SOURCES`를 설정하지 않아도 기본값 `mock`이 사용됩니다. Keepa API key는 실제 secret이므로 로컬 `.env` 또는 GitHub Secrets로만 관리하고 코드, README, 이슈, PR, 로그에 커밋하거나 출력하지 않습니다.
 
 ## Telegram Bot 설정
 
@@ -180,7 +181,7 @@ CONSOLE ALERT FALLBACK (Telegram is not configured)
 
 ## 테스트 및 CI
 
-이 프로젝트의 테스트는 현재 MVP 안전 범위에 맞춰 **mock 데이터만** 사용합니다. 실제 Amazon, Keepa, Slickdeals, Reddit 연동이나 자동구매/로그인/장바구니/쿠폰/CAPTCHA 우회 동작은 테스트에도 포함하지 않습니다.
+이 프로젝트의 테스트는 현재 MVP 안전 범위에 맞춰 **mock 데이터와 fake client만** 사용합니다. 실제 Amazon, Keepa, Slickdeals, Reddit 네트워크 연동이나 자동구매/로그인/장바구니/쿠폰/CAPTCHA 우회 동작은 테스트에도 포함하지 않습니다.
 
 ### 로컬 테스트 실행
 
@@ -194,7 +195,8 @@ python main.py
 - `tests/test_storage.py`: 임시 디렉터리의 SQLite 파일로 최초 알림 가능 여부와 중복 알림 차단을 검증하며, 실제 `data/alerts.sqlite3`는 사용하지 않습니다.
 - `tests/test_config.py`: 환경변수 기본값, `ALERT_SCORE_THRESHOLD` 정수 파싱, `SQLITE_DB_PATH` override, `ENABLED_SOURCES` 목록 파싱, `python-dotenv` 미설치 fallback을 검증합니다.
 - `tests/test_notifier.py`: 알림 메시지 포맷, 사람이 직접 확인해야 할 항목, Telegram 미설정 콘솔 fallback, Telegram 전송 실패 fallback을 mock `requests.post`로 검증합니다.
-- `tests/test_sources.py`: `MockDealSource`, source registry 기본값/알 수 없는 source 실패, source fetch 실패 복구, source deal이 scoring/storage/notifier 흐름으로 이어지는지 검증합니다.
+- `tests/test_sources.py`: `MockDealSource`, source registry 기본값, `keepa` 등록, 알 수 없는 source 실패, source fetch 실패 복구, source deal이 scoring/storage/notifier 흐름으로 이어지는지 검증합니다.
+- `tests/test_keepa_source.py`: fake Keepa product dict normalization, incomplete product skip, missing `KEEPA_API_KEY` safe failure, fake-client 기반 `KeepaDealSource` 동작을 검증합니다.
 
 ### GitHub Actions
 
