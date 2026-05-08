@@ -115,3 +115,27 @@ def test_telegram_send_failure_falls_back_without_raising(
     output = capsys.readouterr().out
     assert "CONSOLE ALERT FALLBACK (Telegram send failed: mock telegram outage)" in output
     assert "Mock OLED Gaming Monitor Price Mistake" in output
+
+
+def test_telegram_send_failure_redacts_credentials_from_console_fallback(
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    token = "123456:secret-token"
+    chat_id = "987654321"
+
+    def fake_post(*args: Any, **kwargs: Any) -> None:
+        raise RuntimeError(
+            f"failed for https://api.telegram.org/bot{token}/sendMessage and chat {chat_id}"
+        )
+
+    monkeypatch.setitem(sys.modules, "requests", SimpleNamespace(post=fake_post))
+    notifier = Notifier(telegram_bot_token=token, telegram_chat_id=chat_id)
+
+    assert notifier.send(make_deal(), make_score_result()) is True
+
+    output = capsys.readouterr().out
+    assert token not in output
+    assert chat_id not in output
+    assert "[redacted]" in output
+    assert "Mock OLED Gaming Monitor Price Mistake" in output
