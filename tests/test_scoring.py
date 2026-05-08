@@ -1,0 +1,106 @@
+"""Tests for mock-only suspicious deal scoring."""
+
+from __future__ import annotations
+
+from deal_alert_bot.models import Deal, ScoreResult
+from deal_alert_bot.scoring import calculate_score
+
+
+def make_deal(**overrides: object) -> Deal:
+    data = {
+        "deal_id": "test-deal",
+        "title": "Generic household item",
+        "category": "Computer peripherals",
+        "current_price": 95.0,
+        "average_price_90d": 100.0,
+        "lowest_price_90d": 90.0,
+        "url": "https://example.com/mock/test-deal",
+        "source": "mock",
+        "keywords": [],
+        "signals": [],
+    }
+    data.update(overrides)
+    return Deal(**data)  # type: ignore[arg-type]
+
+
+def test_deal_discounted_at_least_80_percent_gets_high_score() -> None:
+    deal = make_deal(
+        current_price=19.99,
+        average_price_90d=100.0,
+        lowest_price_90d=50.0,
+        title="OLED monitor possible price mistake",
+        keywords=["monitor"],
+        signals=["price mistake"],
+    )
+
+    result = calculate_score(deal)
+
+    assert result.score >= 80
+    assert result.discount_percent_vs_average >= 80
+    assert any("below the 90-day average" in reason for reason in result.reasons)
+
+
+def test_low_discount_deal_scores_below_default_threshold() -> None:
+    deal = make_deal(
+        current_price=95.0,
+        average_price_90d=100.0,
+        lowest_price_90d=80.0,
+        title="Wireless mouse standard sale",
+        keywords=["mouse"],
+    )
+
+    result = calculate_score(deal)
+
+    assert result.score < 70
+    assert result.discount_percent_vs_average == 5.0
+
+
+def test_interest_keywords_increase_score_and_reasons() -> None:
+    base_deal = make_deal(title="Generic accessory", keywords=[])
+    keyword_deal = make_deal(
+        title="Monitor SSD RAM keyboard mouse headset bundle",
+        keywords=["monitor", "SSD", "RAM", "keyboard", "mouse", "headset"],
+    )
+
+    base_result = calculate_score(base_deal)
+    keyword_result = calculate_score(keyword_deal)
+
+    assert keyword_result.score > base_result.score
+    assert any("matched target keyword(s)" in reason for reason in keyword_result.reasons)
+    assert any("monitor" in reason for reason in keyword_result.reasons)
+    assert any("ssd" in reason for reason in keyword_result.reasons)
+
+
+def test_suspicious_signals_increase_score_and_reasons() -> None:
+    base_deal = make_deal(title="Generic accessory", signals=[])
+    signal_deal = make_deal(
+        title="Price mistake glitch coupon stack promo code bundle",
+        signals=["price mistake", "glitch", "coupon stack", "promo code"],
+    )
+
+    base_result = calculate_score(base_deal)
+    signal_result = calculate_score(signal_deal)
+
+    assert signal_result.score > base_result.score
+    assert any("matched suspicious signal(s)" in reason for reason in signal_result.reasons)
+    for signal in ["price mistake", "glitch", "coupon stack", "promo code"]:
+        assert any(signal in reason for reason in signal_result.reasons)
+
+
+def test_score_result_contains_score_and_reasons() -> None:
+    deal = make_deal(
+        current_price=40.0,
+        average_price_90d=100.0,
+        lowest_price_90d=50.0,
+        keywords=["keyboard"],
+        signals=["promo code"],
+    )
+
+    result = calculate_score(deal)
+
+    assert isinstance(result, ScoreResult)
+    assert isinstance(result.score, int)
+    assert result.score > 0
+    assert isinstance(result.reasons, list)
+    assert result.reasons
+    assert all(isinstance(reason, str) for reason in result.reasons)
