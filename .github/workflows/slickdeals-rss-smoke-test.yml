@@ -1,0 +1,46 @@
+name: Slickdeals RSS Smoke Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      rss_urls:
+        description: Comma-separated Slickdeals RSS URLs
+        required: true
+      enabled_sources:
+        description: Enabled sources for this run
+        required: false
+        default: slickdeals
+      alert_score_threshold:
+        description: Minimum score to alert
+        required: false
+        default: "30"
+
+permissions:
+  contents: read
+
+jobs:
+  slickdeals-rss-smoke-test:
+    name: Manual Slickdeals RSS smoke test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Slickdeals RSS smoke test
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          ENABLED_SOURCES: ${{ inputs.enabled_sources }}
+          SLICKDEALS_RSS_URLS: ${{ inputs.rss_urls }}
+          ALERT_SCORE_THRESHOLD: ${{ inputs.alert_score_threshold }}
+          SQLITE_DB_PATH: ./data/slickdeals-rss-smoke-test.sqlite3
+        run: python main.py
