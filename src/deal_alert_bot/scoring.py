@@ -27,17 +27,58 @@ INTEREST_KEYWORDS = {
     "soundbar",
 }
 
-HIGH_SIGNAL_TERMS = {
-    "price mistake",
-    "glitch",
-    "coupon stack",
-    "promo code",
+KEYWORD_SCORE_POINTS = {
+    "monitor": 15,
+    "gaming monitor": 15,
+    "oled monitor": 15,
+    "ssd": 15,
+    "nvme": 15,
+    "ram": 15,
+    "ddr4": 15,
+    "ddr5": 15,
+    "keyboard": 10,
+    "mechanical keyboard": 10,
+    "mouse": 10,
+    "wireless mouse": 10,
+    "headset": 10,
+    "docking station": 10,
+    "usb hub": 10,
+    "robot vacuum": 5,
+    "air purifier": 5,
+    "coffee machine": 5,
+    "tv": 5,
+    "soundbar": 5,
 }
+
+SIGNAL_SCORE_POINTS = {
+    "price mistake": 50,
+    "pricing error": 50,
+    "glitch": 40,
+    "coupon glitch": 40,
+    "coupon stack": 35,
+    "promo code": 20,
+    "buy 2": 15,
+    "subscribe": 10,
+    "amazon": 10,
+}
+
+HIGH_SIGNAL_TERMS = set(SIGNAL_SCORE_POINTS)
+SLICKDEALS_SOURCE_BASE_POINTS = 5
 
 
 def _normalized_terms(deal: Deal) -> set[str]:
-    title = deal.title.lower()
-    return {term.lower() for term in [*deal.keywords, *deal.signals, title]}
+    return {term.lower() for term in [deal.title, *deal.keywords, *deal.signals]}
+
+
+def _matched_scored_terms(searchable_text: str, points_by_term: dict[str, int]) -> list[str]:
+    """Return case-normalized scored terms, suppressing nested duplicate phrases."""
+
+    raw_matches = [term for term in points_by_term if term in searchable_text]
+    suppressed: set[str] = set()
+    for term in raw_matches:
+        if any(term != other and term in other for other in raw_matches):
+            suppressed.add(term)
+    return sorted(term for term in raw_matches if term not in suppressed)
 
 
 def calculate_score(deal: Deal) -> ScoreResult:
@@ -87,24 +128,36 @@ def calculate_score(deal: Deal) -> ScoreResult:
     else:
         reasons.append("90-day lowest price is unavailable or invalid")
 
-    searchable_text = " ".join(_normalized_terms(deal))
-    matched_keywords = sorted(
-        keyword for keyword in INTEREST_KEYWORDS if keyword in searchable_text
-    )
-    if matched_keywords:
-        keyword_points = min(20, len(matched_keywords) * 5)
-        score += keyword_points
+    if deal.source.lower() == "slickdeals":
+        score += SLICKDEALS_SOURCE_BASE_POINTS
         reasons.append(
-            "matched target keyword(s): " + ", ".join(matched_keywords)
+            f"slickdeals source baseline: +{SLICKDEALS_SOURCE_BASE_POINTS}"
         )
 
-    matched_signals = sorted(
-        signal for signal in HIGH_SIGNAL_TERMS if signal in searchable_text
-    )
+    searchable_text = " ".join(_normalized_terms(deal))
+    matched_keywords = _matched_scored_terms(searchable_text, KEYWORD_SCORE_POINTS)
+    if matched_keywords:
+        keyword_points = sum(KEYWORD_SCORE_POINTS[keyword] for keyword in matched_keywords)
+        score += keyword_points
+        reasons.append(
+            "matched target keyword(s): "
+            + ", ".join(
+                f"{keyword} (+{KEYWORD_SCORE_POINTS[keyword]})"
+                for keyword in matched_keywords
+            )
+        )
+
+    matched_signals = _matched_scored_terms(searchable_text, SIGNAL_SCORE_POINTS)
     if matched_signals:
-        signal_points = min(25, len(matched_signals) * 10)
+        signal_points = sum(SIGNAL_SCORE_POINTS[signal] for signal in matched_signals)
         score += signal_points
-        reasons.append("matched suspicious signal(s): " + ", ".join(matched_signals))
+        reasons.append(
+            "matched suspicious signal(s): "
+            + ", ".join(
+                f"{signal} (+{SIGNAL_SCORE_POINTS[signal]})"
+                for signal in matched_signals
+            )
+        )
 
     return ScoreResult(
         score=min(score, 100),

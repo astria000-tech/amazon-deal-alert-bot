@@ -31,8 +31,8 @@ class FailingRssParser:
 def fake_entry() -> dict[str, str]:
     return {
         "id": "slickdeals-fake-entry-1",
-        "title": "Amazon monitor SSD RAM keyboard mouse headset price mistake $49.99",
-        "summary": "Glitch deal with coupon stack and promo code for human review only.",
+        "title": "Amazon gaming monitor OLED monitor SSD NVMe RAM keyboard mouse headset price mistake $49.99",
+        "summary": "Pricing error and glitch deal with coupon glitch, coupon stack, promo code, buy 2, subscribe, docking station, and USB hub for human review only.",
         "link": "https://slickdeals.example/deals/fake-entry-1",
         "published": "Fri, 08 May 2026 12:00:00 GMT",
     }
@@ -90,7 +90,17 @@ def test_suspicious_signals_are_extracted_from_title_and_summary() -> None:
     deal = normalize_slickdeals_entry(fake_entry())
 
     assert deal is not None
-    for signal in ["amazon", "price mistake", "glitch", "coupon stack", "promo code"]:
+    for signal in [
+        "amazon",
+        "price mistake",
+        "pricing error",
+        "glitch",
+        "coupon glitch",
+        "coupon stack",
+        "promo code",
+        "buy 2",
+        "subscribe",
+    ]:
         assert signal in deal.signals
 
 
@@ -98,7 +108,19 @@ def test_target_keywords_are_extracted_from_title_and_summary() -> None:
     deal = normalize_slickdeals_entry(fake_entry())
 
     assert deal is not None
-    for keyword in ["monitor", "ssd", "ram", "keyboard", "mouse", "headset"]:
+    for keyword in [
+        "monitor",
+        "gaming monitor",
+        "oled monitor",
+        "ssd",
+        "nvme",
+        "ram",
+        "keyboard",
+        "mouse",
+        "headset",
+        "docking station",
+        "usb hub",
+    ]:
         assert keyword in deal.keywords
 
 
