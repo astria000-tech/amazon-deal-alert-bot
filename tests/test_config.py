@@ -15,6 +15,7 @@ def clear_runtime_env(monkeypatch) -> None:  # type: ignore[no-untyped-def]
         "SQLITE_DB_PATH",
         "ALERT_SCORE_THRESHOLD",
         "LOG_LEVEL",
+        "ENABLED_SOURCES",
     ]:
         monkeypatch.delenv(name, raising=False)
 
@@ -30,6 +31,7 @@ def test_defaults_are_used_when_environment_is_absent(monkeypatch, tmp_path: Pat
     assert settings.sqlite_db_path == Path(config.DEFAULT_SQLITE_DB_PATH)
     assert settings.alert_score_threshold == config.DEFAULT_ALERT_SCORE_THRESHOLD
     assert settings.log_level == config.DEFAULT_LOG_LEVEL
+    assert settings.enabled_sources == config.DEFAULT_ENABLED_SOURCES
 
 
 def test_alert_score_threshold_env_is_parsed_as_int(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
@@ -77,3 +79,23 @@ def test_dotenv_fallback_works_when_python_dotenv_is_unavailable(monkeypatch, tm
     assert settings.alert_score_threshold == 88
     assert settings.sqlite_db_path == Path("./tmp/fallback-alerts.sqlite3")
     assert settings.log_level == "DEBUG"
+
+
+def test_enabled_sources_env_is_parsed_as_clean_list(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    clear_runtime_env(monkeypatch)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("ENABLED_SOURCES", "mock, keepa")
+
+    settings = config.load_settings()
+
+    assert settings.enabled_sources == ["mock", "keepa"]
+
+
+def test_enabled_sources_empty_env_uses_default(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    clear_runtime_env(monkeypatch)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("ENABLED_SOURCES", " , , ")
+
+    settings = config.load_settings()
+
+    assert settings.enabled_sources == ["mock"]
