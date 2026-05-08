@@ -75,6 +75,7 @@ class Settings:
     alert_score_threshold: int
     log_level: str
     enabled_sources: list[str]
+    keepa_api_key: str | None
 
 
 def load_settings() -> Settings:
@@ -90,6 +91,7 @@ def load_settings() -> Settings:
     )
     log_level = os.getenv("LOG_LEVEL", DEFAULT_LOG_LEVEL).upper()
     enabled_sources = _read_csv_env("ENABLED_SOURCES", DEFAULT_ENABLED_SOURCES)
+    keepa_api_key = os.getenv("KEEPA_API_KEY") or None
 
     return Settings(
         telegram_bot_token=telegram_bot_token,
@@ -98,4 +100,5 @@ def load_settings() -> Settings:
         alert_score_threshold=alert_score_threshold,
         log_level=log_level,
         enabled_sources=enabled_sources,
+        keepa_api_key=keepa_api_key,
     )

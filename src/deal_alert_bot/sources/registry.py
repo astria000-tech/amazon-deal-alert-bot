@@ -2,15 +2,24 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Callable, Iterable
 
 from .base import DealSource
+from .keepa import KeepaDealSource
 from .mock import MockDealSource
 
 SourceFactory = Callable[[], DealSource]
 
 DEFAULT_ENABLED_SOURCES = ["mock"]
+
+
+def _build_keepa_source() -> KeepaDealSource:
+    return KeepaDealSource(api_key=os.getenv("KEEPA_API_KEY") or None)
+
+
 _SOURCE_FACTORIES: dict[str, SourceFactory] = {
+    "keepa": _build_keepa_source,
     "mock": MockDealSource,
 }
 
