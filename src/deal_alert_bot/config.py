@@ -81,6 +81,7 @@ class Settings:
     enabled_sources: list[str]
     keepa_api_key: str | None
     slickdeals_rss_urls: list[str]
+    reddit_subreddits: list[str]
 
 
 def load_settings() -> Settings:
@@ -98,6 +99,7 @@ def load_settings() -> Settings:
     enabled_sources = _read_csv_env("ENABLED_SOURCES", DEFAULT_ENABLED_SOURCES)
     keepa_api_key = os.getenv("KEEPA_API_KEY") or None
     slickdeals_rss_urls = _read_csv_env("SLICKDEALS_RSS_URLS", [], lowercase=False)
+    reddit_subreddits = _read_csv_env("REDDIT_SUBREDDITS", [], lowercase=True)
 
     return Settings(
         telegram_bot_token=telegram_bot_token,
@@ -108,4 +110,5 @@ def load_settings() -> Settings:
         enabled_sources=enabled_sources,
         keepa_api_key=keepa_api_key,
         slickdeals_rss_urls=slickdeals_rss_urls,
+        reddit_subreddits=reddit_subreddits,
     )

@@ -18,6 +18,7 @@ def clear_runtime_env(monkeypatch) -> None:  # type: ignore[no-untyped-def]
         "ENABLED_SOURCES",
         "KEEPA_API_KEY",
         "SLICKDEALS_RSS_URLS",
+        "REDDIT_SUBREDDITS",
     ]:
         monkeypatch.delenv(name, raising=False)
 
@@ -36,6 +37,7 @@ def test_defaults_are_used_when_environment_is_absent(monkeypatch, tmp_path: Pat
     assert settings.enabled_sources == config.DEFAULT_ENABLED_SOURCES
     assert settings.keepa_api_key is None
     assert settings.slickdeals_rss_urls == []
+    assert settings.reddit_subreddits == []
 
 
 def test_alert_score_threshold_env_is_parsed_as_int(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
@@ -132,4 +134,23 @@ def test_slickdeals_rss_urls_env_is_parsed_as_csv_without_lowercasing(
     assert settings.slickdeals_rss_urls == [
         "https://Example.com/FeedA.xml",
         "https://example.com/feed-b.xml",
+    ]
+
+
+def test_reddit_subreddits_env_is_parsed_as_lowercase_csv(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    clear_runtime_env(monkeypatch)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv(
+        "REDDIT_SUBREDDITS",
+        "PriceGlitch, buildapcsales, dealsOnAmazon",
+    )
+
+    settings = config.load_settings()
+
+    assert settings.reddit_subreddits == [
+        "priceglitch",
+        "buildapcsales",
+        "dealsonamazon",
     ]

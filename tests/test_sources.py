@@ -12,6 +12,7 @@ from deal_alert_bot.notifier import Notifier
 from deal_alert_bot.sources.base import DealSource
 from deal_alert_bot.sources.keepa import KeepaDealSource
 from deal_alert_bot.sources.mock import MockDealSource, fetch_mock_deals
+from deal_alert_bot.sources.reddit import RedditDealSource
 from deal_alert_bot.sources.slickdeals import SlickdealsRssSource
 from deal_alert_bot.sources.registry import (
     available_source_names,
@@ -68,8 +69,8 @@ def test_registry_defaults_to_mock_source() -> None:
     assert sources[0].name == "mock"
 
 
-def test_available_source_names_includes_mock_keepa_and_slickdeals() -> None:
-    assert set(available_source_names()) >= {"mock", "keepa", "slickdeals"}
+def test_available_source_names_includes_mock_keepa_slickdeals_and_reddit() -> None:
+    assert set(available_source_names()) >= {"mock", "keepa", "slickdeals", "reddit"}
 
 
 def test_registry_returns_mock_source_by_name() -> None:
@@ -94,6 +95,15 @@ def test_registry_returns_slickdeals_source_by_name(monkeypatch: pytest.MonkeyPa
 
     assert isinstance(source, SlickdealsRssSource)
     assert source.name == "slickdeals"
+
+
+def test_registry_returns_reddit_source_by_name(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("REDDIT_SUBREDDITS", "priceglitch,buildapcsales")
+
+    source = get_source(" reddit ")
+
+    assert isinstance(source, RedditDealSource)
+    assert source.name == "reddit"
 
 
 def test_registry_returns_enabled_mock_and_keepa_sources(
