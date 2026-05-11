@@ -166,11 +166,12 @@ RSS만으로는 90일 평균가나 최저가 같은 가격 이력을 신뢰성 �
 
 추천 `ALERT_SCORE_THRESHOLD` 예시는 다음과 같습니다.
 
-- `1~10`: smoke test 또는 Telegram 수신 테스트용입니다. 알림이 매우 많을 수 있습니다.
-- `15~25`: 관심 키워드가 포함된 일반 deal 후보를 확인하고 싶을 때 사용합니다.
-- `30~50`: `price mistake`, `pricing error`, `glitch`, `coupon stack` 같은 오류딜/글리치 의심 signal 위주로 필터링하고 싶을 때 권장합니다.
+- `1~10`: 테스트용입니다. smoke test 또는 Telegram 수신 확인처럼 알림 경로만 검증할 때 사용합니다.
+- `20~30`: 일반 관심 딜까지 넓게 확인하고 싶을 때 사용합니다.
+- `40~45`: `glitch`, 오류딜 의심 signal 감시용으로 권장합니다. Slickdeals RSS Smoke Test workflow의 기본값은 이 운영 의도에 맞춰 `45`입니다.
+- `50` 이상: `price mistake`, `pricing error`처럼 강한 오류딜 신호 위주로 보고 싶을 때 사용합니다.
 
-실제 운영 전에는 threshold를 낮게 두고 Telegram 수신과 RSS 정규화가 정상인지 먼저 테스트한 뒤, 알림 양과 품질을 보면서 `30~50` 범위 또는 더 높은 값으로 조정하는 것을 권장합니다. threshold를 낮게 설정하면 일반 Slickdeals 항목도 많이 알림으로 올 수 있습니다.
+실제 운영 전에는 threshold를 낮게 두고 Telegram 수신과 RSS 정규화가 정상인지 먼저 테스트한 뒤, 알림 양과 품질을 보면서 `40~45` 범위 또는 더 높은 값으로 조정하는 것을 권장합니다. threshold를 낮게 설정하면 일반 Slickdeals 항목도 많이 알림으로 올 수 있습니다.
 
 ## 환경변수 계획
 
