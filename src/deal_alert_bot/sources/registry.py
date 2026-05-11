@@ -8,6 +8,7 @@ from collections.abc import Callable, Iterable
 from .base import DealSource
 from .keepa import KeepaDealSource
 from .mock import MockDealSource
+from .reddit import RedditDealSource
 from .slickdeals import SlickdealsRssSource
 
 SourceFactory = Callable[[], DealSource]
@@ -24,6 +25,11 @@ def _build_slickdeals_source() -> SlickdealsRssSource:
     return SlickdealsRssSource(rss_urls=rss_urls)
 
 
+def _build_reddit_source() -> RedditDealSource:
+    subreddits = _read_csv_env("REDDIT_SUBREDDITS")
+    return RedditDealSource(subreddits=subreddits)
+
+
 def _read_csv_env(name: str) -> list[str]:
     raw_value = os.getenv(name)
     if raw_value is None or raw_value.strip() == "":
@@ -34,6 +40,7 @@ def _read_csv_env(name: str) -> list[str]:
 _SOURCE_FACTORIES: dict[str, SourceFactory] = {
     "keepa": _build_keepa_source,
     "mock": MockDealSource,
+    "reddit": _build_reddit_source,
     "slickdeals": _build_slickdeals_source,
 }
 

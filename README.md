@@ -81,7 +81,7 @@ MVP뿐 아니라 장기적으로도 다음 기능은 이 프로젝트 범위에�
 
 ## 현재 MVP 구조
 
-현재 구현된 파일 구조는 다음과 같습니다. source adapter interface와 registry 위에 mock 데이터 소스를 기본 활성화하며, Keepa는 실제 API 호출 없는 skeleton/fake-client 테스트 단계로만 등록되어 있고, Slickdeals는 사용자가 지정한 공개 RSS URL만 읽는 adapter로 등록되어 있습니다.
+현재 구현된 파일 구조는 다음과 같습니다. source adapter interface와 registry 위에 mock 데이터 소스를 기본 활성화하며, Keepa는 실제 API 호출 없는 skeleton/fake-client 테스트 단계로만 등록되어 있고, Slickdeals는 사용자가 지정한 공개 RSS URL만 읽는 adapter로 등록되어 있으며, Reddit은 실제 API 호출 없는 skeleton/fake-client 테스트 단계로 등록되어 있습니다.
 
 ```text
 amazon-deal-alert-bot/
@@ -103,6 +103,7 @@ amazon-deal-alert-bot/
             ├── base.py        # DealSource 공통 adapter interface
             ├── keepa.py       # Keepa skeleton 및 fake-client normalization
             ├── mock.py        # MVP용 MockDealSource
+            ├── reddit.py      # Reddit skeleton 및 fake-client normalization
             ├── slickdeals.py  # 사용자 설정 공개 RSS 기반 Slickdeals adapter
             └── registry.py    # ENABLED_SOURCES 기반 source 활성화
 ```
@@ -111,7 +112,7 @@ amazon-deal-alert-bot/
 
 `main.py`는 특정 source 구현을 직접 호출하지 않고, `sources.registry`에서 활성화된 adapter 목록을 받아 각 adapter의 `fetch_deals()`를 실행합니다. 모든 source adapter는 `DealSource` interface를 따르며, 최소한 안정적인 `name` 속성과 `fetch_deals() -> list[Deal]` 메서드를 제공합니다. 따라서 향후 Keepa API, Slickdeals RSS, Reddit API adapter를 추가해도 scoring, SQLite 중복 방지, notifier 흐름은 동일한 `Deal` 모델만 처리하면 됩니다.
 
-현재 등록된 source는 `mock`, `keepa`, `slickdeals`입니다. 기본 실행은 계속 `mock`만 사용합니다. `keepa`는 skeleton/fake-client 테스트 단계이며 실제 Keepa API 호출, Amazon 호출, 크롤링, 구매/로그인/장바구니/쿠폰/CAPTCHA 자동화를 수행하지 않습니다. `slickdeals`는 공개 RSS URL을 사용자가 `SLICKDEALS_RSS_URLS`로 명시했을 때만 RSS 항목을 읽습니다. Amazon 사이트를 직접 크롤링하지 않고, 자동구매/로그인/장바구니/쿠폰/CAPTCHA 자동화도 수행하지 않습니다. `reddit` 등 등록되지 않은 source는 안전하게 실패합니다. future adapter를 추가할 때도 자동구매, Amazon 로그인 자동화, 장바구니 테스트, 쿠폰 클릭, CAPTCHA 우회, 대량 크롤링 기능은 포함하지 않습니다.
+현재 등록된 source는 `mock`, `keepa`, `slickdeals`, `reddit`입니다. 기본 실행은 계속 `mock`만 사용합니다. `keepa`는 skeleton/fake-client 테스트 단계이며 실제 Keepa API 호출, Amazon 호출, 크롤링, 구매/로그인/장바구니/쿠폰/CAPTCHA 자동화를 수행하지 않습니다. `slickdeals`는 공개 RSS URL을 사용자가 `SLICKDEALS_RSS_URLS`로 명시했을 때만 RSS 항목을 읽습니다. Amazon 사이트를 직접 크롤링하지 않고, 자동구매/로그인/장바구니/쿠폰/CAPTCHA 자동화도 수행하지 않습니다. `reddit`은 보조 커뮤니티 신호 source로 준비된 skeleton이며, 현재 실제 Reddit API 호출 없이 fake-client 테스트만 제공합니다. 등록되지 않은 source는 안전하게 실패합니다. future adapter를 추가할 때도 자동구매, Amazon 로그인 자동화, 장바구니 테스트, 쿠폰 클릭, CAPTCHA 우회, 대량 크롤링 기능은 포함하지 않습니다.
 
 ### ENABLED_SOURCES 설정
 
@@ -135,6 +136,8 @@ SLICKDEALS_RSS_URLS=https://example.com/slickdeals-feed.xml,https://example.com/
 ```
 
 `SLICKDEALS_RSS_URLS`는 쉼표로 여러 URL을 받을 수 있습니다. 값이 없으면 `slickdeals` source가 활성화되어 있어도 빈 deal 목록을 반환하므로 전체 실행은 실패하지 않습니다. RSS URL은 secret은 아니지만 로그에 과도하게 출력하지 않으며, 기본 CI와 테스트는 fake RSS parser/content만 사용해 실제 Slickdeals 네트워크 호출을 하지 않습니다.
+
+Reddit source는 향후 `r/priceglitch`, `r/buildapcsales`, `r/dealsonamazon` 같은 커뮤니티 게시글을 보조 신호로 사용할 수 있도록 준비한 skeleton입니다. 현재는 production Reddit client가 없으므로 실제 Reddit API 호출을 수행하지 않으며, fake client가 반환한 post dict를 `Deal` 모델로 정규화하는 테스트만 제공합니다. 향후 실제 연동 시 subreddit 목록은 `REDDIT_SUBREDDITS=priceglitch,buildapcsales,dealsonamazon`처럼 쉼표 구분 환경변수로 제어할 수 있습니다. Reddit credential 관련 값은 실제 client 구현 전까지 placeholder로만 문서화하며, 실제 secret은 커밋하지 않습니다.
 
 현재 `keepa`는 registry에 등록되어 있지만 실제 네트워크 client가 없습니다. `ENABLED_SOURCES=keepa` 또는 `ENABLED_SOURCES=mock,keepa`로 활성화하면 향후 실제 client 연결 시 `KEEPA_API_KEY`가 필요합니다. 지금은 API 키가 없으면 명확한 설정 오류로 source fetch가 실패하며, `mock,keepa`처럼 함께 실행할 경우 source별 실패 격리 로직 덕분에 mock source 처리는 계속 진행됩니다.
 
@@ -188,6 +191,7 @@ ENABLED_SOURCES=mock
 # Optional/future integrations
 KEEPA_API_KEY=
 SLICKDEALS_RSS_URLS=
+REDDIT_SUBREDDITS=priceglitch,buildapcsales,dealsonamazon
 REDDIT_CLIENT_ID=replace-later
 REDDIT_CLIENT_SECRET=replace-later
 REDDIT_USER_AGENT=amazon-deal-alert-bot/0.1
@@ -202,7 +206,7 @@ python main.py
 python main.py  # 두 번째 실행에서는 동일 deal_id 중복 알림이 차단됩니다
 ```
 
-Telegram 환경변수가 비어 있으면 실제 Telegram 전송을 시도하지 않고 콘솔 알림으로 fallback합니다. SQLite 알림 이력은 기본적으로 `./data/alerts.sqlite3`에 저장됩니다. `ENABLED_SOURCES`를 설정하지 않아도 기본값 `mock`이 사용됩니다. Slickdeals RSS는 `ENABLED_SOURCES`에 `slickdeals`를 추가하고 `SLICKDEALS_RSS_URLS`를 설정한 경우에만 동작합니다. Keepa API key는 실제 secret이므로 로컬 `.env` 또는 GitHub Secrets로만 관리하고 코드, README, 이슈, PR, 로그에 커밋하거나 출력하지 않습니다.
+Telegram 환경변수가 비어 있으면 실제 Telegram 전송을 시도하지 않고 콘솔 알림으로 fallback합니다. SQLite 알림 이력은 기본적으로 `./data/alerts.sqlite3`에 저장됩니다. `ENABLED_SOURCES`를 설정하지 않아도 기본값 `mock`이 사용됩니다. Slickdeals RSS는 `ENABLED_SOURCES`에 `slickdeals`를 추가하고 `SLICKDEALS_RSS_URLS`를 설정한 경우에만 동작합니다. Reddit은 현재 skeleton/fake-client 단계이므로 `ENABLED_SOURCES`에 추가해도 실제 Reddit API 호출을 하지 않으며, 향후 client 구현 시 `REDDIT_SUBREDDITS`로 subreddit 목록을 제어합니다. Keepa API key는 실제 secret이므로 로컬 `.env` 또는 GitHub Secrets로만 관리하고 코드, README, 이슈, PR, 로그에 커밋하거나 출력하지 않습니다.
 
 ## Telegram Bot 설정
 
@@ -227,7 +231,7 @@ CONSOLE ALERT FALLBACK (Telegram is not configured)
 
 ## 테스트 및 CI
 
-이 프로젝트의 테스트는 현재 MVP 안전 범위에 맞춰 **mock 데이터와 fake client만** 사용합니다. 실제 Amazon, Keepa, Slickdeals, Reddit 네트워크 연동이나 자동구매/로그인/장바구니/쿠폰/CAPTCHA 우회 동작은 테스트에도 포함하지 않습니다. Slickdeals RSS 테스트도 fake parser와 fake RSS content만 사용합니다.
+이 프로젝트의 테스트는 현재 MVP 안전 범위에 맞춰 **mock 데이터와 fake client만** 사용합니다. 실제 Amazon, Keepa, Slickdeals, Reddit 네트워크 연동이나 자동구매/로그인/장바구니/쿠폰/CAPTCHA 우회 동작은 테스트에도 포함하지 않습니다. Slickdeals RSS 테스트도 fake parser와 fake RSS content만 사용하고, Reddit 테스트도 fake client와 fake post dict만 사용합니다.
 
 ### 로컬 테스트 실행
 
@@ -239,11 +243,12 @@ python main.py
 
 - `tests/test_scoring.py`: 평균가 대비 할인율, 관심 키워드, 오류딜 의심 signal, `ScoreResult` 내용을 검증합니다.
 - `tests/test_storage.py`: 임시 디렉터리의 SQLite 파일로 최초 알림 가능 여부와 중복 알림 차단을 검증하며, 실제 `data/alerts.sqlite3`는 사용하지 않습니다.
-- `tests/test_config.py`: 환경변수 기본값, `ALERT_SCORE_THRESHOLD` 정수 파싱, `SQLITE_DB_PATH` override, `ENABLED_SOURCES` 및 `SLICKDEALS_RSS_URLS` 목록 파싱, `python-dotenv` 미설치 fallback을 검증합니다.
+- `tests/test_config.py`: 환경변수 기본값, `ALERT_SCORE_THRESHOLD` 정수 파싱, `SQLITE_DB_PATH` override, `ENABLED_SOURCES`, `SLICKDEALS_RSS_URLS`, `REDDIT_SUBREDDITS` 목록 파싱, `python-dotenv` 미설치 fallback을 검증합니다.
 - `tests/test_notifier.py`: 알림 메시지 포맷, 사람이 직접 확인해야 할 항목, Telegram 미설정 콘솔 fallback, Telegram 전송 실패 fallback을 mock `requests.post`로 검증합니다.
-- `tests/test_sources.py`: `MockDealSource`, source registry 기본값, `keepa`/`slickdeals` 등록, 알 수 없는 source 실패, source fetch 실패 복구, source deal이 scoring/storage/notifier 흐름으로 이어지는지 검증합니다.
+- `tests/test_sources.py`: `MockDealSource`, source registry 기본값, `keepa`/`slickdeals`/`reddit` 등록, 알 수 없는 source 실패, source fetch 실패 복구, source deal이 scoring/storage/notifier 흐름으로 이어지는지 검증합니다.
 - `tests/test_keepa_source.py`: fake Keepa product dict normalization, incomplete product skip, missing `KEEPA_API_KEY` safe failure, fake-client 기반 `KeepaDealSource` 동작을 검증합니다.
 - `tests/test_slickdeals_source.py`: fake RSS parser/content 기반 Slickdeals RSS normalization, title/link 누락 skip, signal/keyword 추출, parser 실패 격리를 검증합니다.
+- `tests/test_reddit_source.py`: fake Reddit client/post 기반 Reddit normalization, title 누락 skip, signal/keyword 추출, 실제 네트워크 호출 없는 skeleton 동작을 검증합니다.
 
 ### GitHub Actions
 
